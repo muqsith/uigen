@@ -5,6 +5,34 @@ import { cn } from "@/lib/utils";
 import { User, Bot, Loader2 } from "lucide-react";
 import { MarkdownRenderer } from "./MarkdownRenderer";
 
+function getToolLabel(toolName: string, args: Record<string, unknown>, isDone: boolean): string {
+  const path = typeof args.path === "string" ? args.path.split("/").pop() || args.path : "";
+  const command = args.command as string | undefined;
+
+  if (toolName === "str_replace_editor") {
+    switch (command) {
+      case "create": return isDone ? `Created ${path}` : `Creating ${path}`;
+      case "str_replace":
+      case "insert": return isDone ? `Edited ${path}` : `Editing ${path}`;
+      case "view": return isDone ? `Read ${path}` : `Reading ${path}`;
+      default: return path ? (isDone ? `Updated ${path}` : `Updating ${path}`) : "Working…";
+    }
+  }
+
+  if (toolName === "file-manager") {
+    switch (command) {
+      case "rename": {
+        const newPath = typeof args.new_path === "string" ? args.new_path.split("/").pop() || args.new_path : "";
+        return isDone ? `Renamed to ${newPath}` : `Renaming ${path}`;
+      }
+      case "delete": return isDone ? `Deleted ${path}` : `Deleting ${path}`;
+      default: return path ? (isDone ? `Updated ${path}` : `Updating ${path}`) : "Working…";
+    }
+  }
+
+  return toolName;
+}
+
 interface MessageListProps {
   messages: Message[];
   isLoading?: boolean;
@@ -76,17 +104,19 @@ export function MessageList({ messages, isLoading }: MessageListProps) {
                             );
                           case "tool-invocation":
                             const tool = part.toolInvocation;
+                            const isDone = tool.state === "result";
+                            const label = getToolLabel(tool.toolName, tool.args as Record<string, unknown>, isDone);
                             return (
-                              <div key={partIndex} className="inline-flex items-center gap-2 mt-2 px-3 py-1.5 bg-neutral-50 rounded-lg text-xs font-mono border border-neutral-200">
-                                {tool.state === "result" && tool.result ? (
+                              <div key={partIndex} className="inline-flex items-center gap-2 mt-2 px-3 py-1.5 bg-neutral-50 rounded-lg text-xs border border-neutral-200">
+                                {isDone ? (
                                   <>
-                                    <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
-                                    <span className="text-neutral-700">{tool.toolName}</span>
+                                    <div className="w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0"></div>
+                                    <span className="text-neutral-600">{label}</span>
                                   </>
                                 ) : (
                                   <>
-                                    <Loader2 className="w-3 h-3 animate-spin text-blue-600" />
-                                    <span className="text-neutral-700">{tool.toolName}</span>
+                                    <Loader2 className="w-3 h-3 animate-spin text-blue-600 flex-shrink-0" />
+                                    <span className="text-neutral-600">{label}</span>
                                   </>
                                 )}
                               </div>
